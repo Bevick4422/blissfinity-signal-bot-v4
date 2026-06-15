@@ -5,11 +5,50 @@ from config import (
     TELEGRAM_CHAT_ID
 )
 
-bot = Bot(
-    token=TELEGRAM_TOKEN
-)
+# ==========================
+# TELEGRAM BOT
+# ==========================
+
+bot = None
+
+if TELEGRAM_TOKEN:
+
+    try:
+
+        bot = Bot(
+            token=TELEGRAM_TOKEN
+        )
+
+        print(
+            "Telegram Bot Initialized"
+        )
+
+    except Exception as e:
+
+        print(
+            f"Telegram Init Error: {e}"
+        )
+
+else:
+
+    print(
+        "TELEGRAM_TOKEN missing"
+    )
+
+
+# ==========================
+# SEND MESSAGE
+# ==========================
 
 async def send_message(text):
+
+    if bot is None:
+
+        print(
+            "Telegram disabled"
+        )
+
+        return
 
     try:
 
@@ -18,7 +57,9 @@ async def send_message(text):
             text=text
         )
 
-        print("Telegram message sent")
+        print(
+            "Telegram message sent"
+        )
 
     except Exception as e:
 
