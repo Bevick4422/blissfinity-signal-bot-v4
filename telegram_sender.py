@@ -1,19 +1,27 @@
-from telegram import Bot
+import os
 
 from config import (
     TELEGRAM_TOKEN,
     TELEGRAM_CHAT_ID
 )
 
-# ==========================
-# TELEGRAM BOT
-# ==========================
+BOT_ENABLED = True
 
-bot = None
+try:
 
-if TELEGRAM_TOKEN:
+    from telegram import Bot
 
-    try:
+    if not TELEGRAM_TOKEN:
+
+        BOT_ENABLED = False
+
+        bot = None
+
+        print(
+            "TELEGRAM_TOKEN missing"
+        )
+
+    else:
 
         bot = Bot(
             token=TELEGRAM_TOKEN
@@ -23,26 +31,24 @@ if TELEGRAM_TOKEN:
             "Telegram Bot Initialized"
         )
 
-    except Exception as e:
+except Exception as e:
 
-        print(
-            f"Telegram Init Error: {e}"
-        )
+    BOT_ENABLED = False
 
-else:
+    bot = None
 
     print(
-        "TELEGRAM_TOKEN missing"
+        f"Telegram Init Error: {e}"
     )
 
 
-# ==========================
+# ========================================
 # SEND MESSAGE
-# ==========================
+# ========================================
 
 async def send_message(text):
 
-    if bot is None:
+    if not BOT_ENABLED:
 
         print(
             "Telegram disabled"
@@ -64,5 +70,30 @@ async def send_message(text):
     except Exception as e:
 
         print(
-            f"Telegram Error: {e}"
+            f"Telegram Send Error: {e}"
+        )
+
+
+# ========================================
+# SEND STATS
+# ========================================
+
+async def send_stats():
+
+    try:
+
+        from performance import (
+            get_stats
+        )
+
+        stats = get_stats()
+
+        await send_message(
+            stats
+        )
+
+    except Exception as e:
+
+        print(
+            f"Stats Error: {e}"
         )
