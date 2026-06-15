@@ -6,7 +6,7 @@
         "tp1": 1753.9664000000002,
         "tp2": 1805.0528000000002,
         "sl": 1668.8224,
-        "tp1_hit": false,
+        "tp1_hit": true,
         "tp2_hit": false,
         "sl_hit": false
     },

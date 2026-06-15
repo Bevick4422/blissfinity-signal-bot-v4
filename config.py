@@ -3,6 +3,8 @@ import os
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+MAX_SIGNALS = 4
+
 SYMBOLS = [
     "BTC_USDT",
     "ETH_USDT",
@@ -11,8 +13,6 @@ SYMBOLS = [
     "TIA_USDT",
     "RUNE_USDT"
 ]
-
-MAX_SIGNALS = 4
 
 TREND_TIMEFRAME = "Hour4"
 ENTRY_TIMEFRAME = "Min60"

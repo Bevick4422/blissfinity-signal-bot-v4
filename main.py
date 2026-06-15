@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from config import (
     SYMBOLS,
@@ -7,9 +8,7 @@ from config import (
     MAX_SIGNALS
 )
 
-from scanner import (
-    get_market_data
-)
+from scanner import get_market_data
 
 from signal_engine import (
     bullish_structure,
@@ -28,13 +27,9 @@ from trade_storage import (
     save_trades
 )
 
-from trade_tracker import (
-    check_trades
-)
+from trade_tracker import check_trades
 
-from telegram_sender import (
-    send_message
-)
+from telegram_sender import send_message
 
 
 async def main():
@@ -42,33 +37,40 @@ async def main():
     print("V4 BOT STARTED")
 
     try:
-
         await send_message(
             "✅ Blissfinity V4 Online"
         )
-
-    except Exception as e:
-
-        print(
-            f"Telegram Error: {e}"
-        )
+    except:
+        pass
 
     while True:
 
         try:
 
-            signal_history = load_signals()
-
             trades = load_trades()
 
-            signals_sent = 0
+            history = load_signals()
+
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+
+            if history.get("date") != today:
+
+                history = {
+                    "date": today,
+                    "count": 0
+                }
+
+            signals_today = history.get(
+                "count",
+                0
+            )
 
             for symbol in SYMBOLS:
 
-                if signals_sent >= MAX_SIGNALS:
+                if signals_today >= MAX_SIGNALS:
 
                     print(
-                        "Max signals reached"
+                        f"Daily limit reached ({MAX_SIGNALS})"
                     )
 
                     break
@@ -85,7 +87,23 @@ async def main():
                 if entry_df is None:
                     continue
 
-                signal = None
+                active_trade = any(
+
+                    trade["pair"] == symbol
+
+                    for trade in trades
+
+                )
+
+                if active_trade:
+
+                    print(
+                        f"{symbol} active"
+                    )
+
+                    continue
+
+                direction = None
 
                 if (
                     bullish_structure(trend_df)
@@ -93,7 +111,7 @@ async def main():
                     bullish_setup(entry_df)
                 ):
 
-                    signal = "LONG"
+                    direction = "LONG"
 
                 elif (
                     bearish_structure(trend_df)
@@ -101,127 +119,92 @@ async def main():
                     bearish_setup(entry_df)
                 ):
 
-                    signal = "SHORT"
+                    direction = "SHORT"
 
-                if signal is None:
+                if direction is None:
                     continue
 
-                if (
-                    signal_history.get(symbol)
-                    == signal
-                ):
-
-                    print(
-                        f"{symbol} already sent"
-                    )
-
-                    continue
-
-                existing_trade = any(
-
-                    trade["pair"] == symbol
-
-                    and
-
-                    not trade["tp2_hit"]
-
-                    and
-
-                    not trade["sl_hit"]
-
-                    for trade in trades
-
-                )
-
-                if existing_trade:
-
-                    print(
-                        f"{symbol} already active"
-                    )
-
-                    continue
-
-                price = round(
+                entry = round(
                     float(
                         entry_df["close"].iloc[-1]
                     ),
                     4
                 )
 
-                await send_message(
-                    f"🚀 {symbol} {signal}"
-                )
+                if direction == "LONG":
 
-                signals_sent += 1
+                    sl = round(
+                        entry * 0.95,
+                        4
+                    )
 
-                signal_history[symbol] = signal
+                    tp1 = round(
+                        entry * 1.05,
+                        4
+                    )
 
-                save_signals(
-                    signal_history
-                )
-
-                if signal == "LONG":
-
-                    trades.append({
-
-                        "pair": symbol,
-                        "direction": "LONG",
-
-                        "entry": price,
-
-                        "tp1": round(
-                            price * 1.05,
-                            4
-                        ),
-
-                        "tp2": round(
-                            price * 1.10,
-                            4
-                        ),
-
-                        "sl": round(
-                            price * 0.95,
-                            4
-                        ),
-
-                        "tp1_hit": False,
-                        "tp2_hit": False,
-                        "sl_hit": False
-
-                    })
+                    tp2 = round(
+                        entry * 1.10,
+                        4
+                    )
 
                 else:
 
-                    trades.append({
+                    sl = round(
+                        entry * 1.05,
+                        4
+                    )
 
-                        "pair": symbol,
-                        "direction": "SHORT",
+                    tp1 = round(
+                        entry * 0.95,
+                        4
+                    )
 
-                        "entry": price,
+                    tp2 = round(
+                        entry * 0.90,
+                        4
+                    )
 
-                        "tp1": round(
-                            price * 0.95,
-                            4
-                        ),
+                message = f"""
+🚀 NEW SIGNAL
 
-                        "tp2": round(
-                            price * 0.90,
-                            4
-                        ),
+Pair: {symbol}
+Direction: {direction}
 
-                        "sl": round(
-                            price * 1.05,
-                            4
-                        ),
+Entry: {entry}
+TP1: {tp1}
+TP2: {tp2}
+SL: {sl}
+"""
 
-                        "tp1_hit": False,
-                        "tp2_hit": False,
-                        "sl_hit": False
+                await send_message(
+                    message
+                )
 
-                    })
+                trades.append({
+
+                    "pair": symbol,
+                    "direction": direction,
+                    "entry": entry,
+                    "tp1": tp1,
+                    "tp2": tp2,
+                    "sl": sl,
+                    "tp1_hit": False,
+                    "tp2_hit": False,
+                    "sl_hit": False
+
+                })
 
                 save_trades(
                     trades
+                )
+
+                signals_today += 1
+
+                history["count"] = signals_today
+
+                save_signals(
+                    history
                 )
 
                 print(
@@ -251,6 +234,4 @@ async def main():
 
 if __name__ == "__main__":
 
-    asyncio.run(
-        main()
-    )
+    asyncio.run(main())

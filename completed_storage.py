@@ -4,9 +4,11 @@ import os
 COMPLETED_FILE = "completed_trades.json"
 
 
-def load_completed():
+def load_completed_trades():
 
-    if not os.path.exists(COMPLETED_FILE):
+    if not os.path.exists(
+        COMPLETED_FILE
+    ):
         return []
 
     with open(
@@ -17,7 +19,9 @@ def load_completed():
         return json.load(f)
 
 
-def save_completed(trades):
+def save_completed_trades(
+    trades
+):
 
     with open(
         COMPLETED_FILE,
