@@ -10,17 +10,9 @@
         "tp2_hit": false,
         "sl_hit": false
     },
-    {
-        "pair": "SOL_USDT",
-        "direction": "LONG",
-        "entry": 69.75,
-        "tp1": 71.8425,
-        "tp2": 73.935,
-        "sl": 68.355,
-        "tp1_hit": true,
-        "tp2_hit": false,
-        "sl_hit": false
-    },
+
+    
+  
     {
         "pair": "TIA_USDT",
         "direction": "LONG",
