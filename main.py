@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 
 from config import (
     SYMBOLS,
@@ -51,8 +51,7 @@ async def main():
 
             history = load_signals()
 
-            today = datetime.utcnow().strftime("%Y-%m-%d")
-
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
             if history.get("date") != today:
 
                 history = {
