@@ -10,71 +10,50 @@ from completed_storage import (
     save_completed_trades
 )
 
-from price_fetcher import (
-    get_price
-)
-
-from telegram_sender import (
-    send_message
-)
+from price_fetcher import get_price
+from telegram_sender import send_message
 
 
 async def check_trades():
 
     print("TRACKER RUNNING")
 
-    try:
+    trades = load_trades()
+    completed = load_completed_trades()
 
-        trades = load_trades()
+    active_trades = []
 
-        completed = load_completed_trades()
+    for trade in trades:
 
-        active_trades = []
+        try:
 
-        for trade in trades:
+            price = get_price(trade["pair"])
 
-            try:
+            if price is None:
+                active_trades.append(trade)
+                continue
 
-                price = get_price(
-                    trade["pair"]
-                )
+            entry = float(trade["entry"])
+            sl = float(trade["sl"])
 
-                if price is None:
+            risk = abs(entry - sl)
 
-                    active_trades.append(
-                        trade
-                    )
+            closed = False
 
-                    continue
+            # =====================
+            # LONG
+            # =====================
 
-                entry = float(
-                    trade["entry"]
-                )
+            if trade["direction"] == "LONG":
 
-                sl = float(
-                    trade["sl"]
-                )
+                if (
+                    not trade.get("tp1_hit", False)
+                    and price >= float(trade["tp1"])
+                ):
 
-                risk = abs(
-                    entry - sl
-                )
+                    trade["tp1_hit"] = True
 
-                closed = False
-
-                # ==================================
-                # LONG
-                # ==================================
-
-                if trade["direction"] == "LONG":
-
-                    if (
-                        not trade.get("tp1_hit", False)
-                        and price >= trade["tp1"]
-                    ):
-
-                        trade["tp1_hit"] = True
-
-                        await send_message(
+                    await send_message(
 f"""🎯 TP1 HIT
 
 {trade['pair']}
@@ -82,23 +61,22 @@ LONG
 
 Entry: {trade['entry']}
 TP1: {trade['tp1']}"""
-                        )
+                    )
 
-                    if (
-                        not trade.get("tp2_hit", False)
-                        and price >= trade["tp2"]
-                    ):
+                if (
+                    not trade.get("tp2_hit", False)
+                    and price >= float(trade["tp2"])
+                ):
 
-                        trade["tp2_hit"] = True
+                    trade["tp2_hit"] = True
 
-                        rr = round(
-                            (
-                                trade["tp2"] - entry
-                            ) / risk,
-                            2
-                        )
+                    rr = round(
+                        (float(trade["tp2"]) - entry)
+                        / risk,
+                        2
+                    )
 
-                        await send_message(
+                    await send_message(
 f"""🔥🔥🔥 TP2 SMASHED
 
 {trade['pair']}
@@ -108,34 +86,27 @@ Entry: {trade['entry']}
 TP2: {trade['tp2']}
 
 RR: {rr}R"""
+                    )
+
+                    completed.append({
+                        **trade,
+                        "result": "TP2",
+                        "rr": rr,
+                        "closed_at": str(
+                            datetime.now(UTC)
                         )
+                    })
 
-                        completed.append({
+                    closed = True
 
-                            **trade,
+                elif (
+                    not trade.get("sl_hit", False)
+                    and price <= float(trade["sl"])
+                ):
 
-                            "result": "TP2",
+                    trade["sl_hit"] = True
 
-                            "rr": rr,
-
-                            "closed_at": str(
-                                datetime.now(
-                                    UTC
-                                )
-                            )
-
-                        })
-
-                        closed = True
-
-                    elif (
-                        not trade.get("sl_hit", False)
-                        and price <= trade["sl"]
-                    ):
-
-                        trade["sl_hit"] = True
-
-                        await send_message(
+                    await send_message(
 f"""🛑 STOPLOSS HIT
 
 {trade['pair']}
@@ -143,40 +114,33 @@ LONG
 
 Entry: {trade['entry']}
 SL: {trade['sl']}"""
+                    )
+
+                    completed.append({
+                        **trade,
+                        "result": "SL",
+                        "rr": -1,
+                        "closed_at": str(
+                            datetime.now(UTC)
                         )
+                    })
 
-                        completed.append({
+                    closed = True
 
-                            **trade,
+            # =====================
+            # SHORT
+            # =====================
 
-                            "result": "SL",
+            elif trade["direction"] == "SHORT":
 
-                            "rr": -1,
+                if (
+                    not trade.get("tp1_hit", False)
+                    and price <= float(trade["tp1"])
+                ):
 
-                            "closed_at": str(
-                                datetime.now(
-                                    UTC
-                                )
-                            )
+                    trade["tp1_hit"] = True
 
-                        })
-
-                        closed = True
-
-                # ==================================
-                # SHORT
-                # ==================================
-
-                elif trade["direction"] == "SHORT":
-
-                    if (
-                        not trade.get("tp1_hit", False)
-                        and price <= trade["tp1"]
-                    ):
-
-                        trade["tp1_hit"] = True
-
-                        await send_message(
+                    await send_message(
 f"""🎯 TP1 HIT
 
 {trade['pair']}
@@ -184,23 +148,22 @@ SHORT
 
 Entry: {trade['entry']}
 TP1: {trade['tp1']}"""
-                        )
+                    )
 
-                    if (
-                        not trade.get("tp2_hit", False)
-                        and price <= trade["tp2"]
-                    ):
+                if (
+                    not trade.get("tp2_hit", False)
+                    and price <= float(trade["tp2"])
+                ):
 
-                        trade["tp2_hit"] = True
+                    trade["tp2_hit"] = True
 
-                        rr = round(
-                            (
-                                entry - trade["tp2"]
-                            ) / risk,
-                            2
-                        )
+                    rr = round(
+                        (entry - float(trade["tp2"]))
+                        / risk,
+                        2
+                    )
 
-                        await send_message(
+                    await send_message(
 f"""🔥🔥🔥 TP2 SMASHED
 
 {trade['pair']}
@@ -210,34 +173,27 @@ Entry: {trade['entry']}
 TP2: {trade['tp2']}
 
 RR: {rr}R"""
+                    )
+
+                    completed.append({
+                        **trade,
+                        "result": "TP2",
+                        "rr": rr,
+                        "closed_at": str(
+                            datetime.now(UTC)
                         )
+                    })
 
-                        completed.append({
+                    closed = True
 
-                            **trade,
+                elif (
+                    not trade.get("sl_hit", False)
+                    and price >= float(trade["sl"])
+                ):
 
-                            "result": "TP2",
+                    trade["sl_hit"] = True
 
-                            "rr": rr,
-
-                            "closed_at": str(
-                                datetime.now(
-                                    UTC
-                                )
-                            )
-
-                        })
-
-                        closed = True
-
-                    elif (
-                        not trade.get("sl_hit", False)
-                        and price >= trade["sl"]
-                    ):
-
-                        trade["sl_hit"] = True
-
-                        await send_message(
+                    await send_message(
 f"""🛑 STOPLOSS HIT
 
 {trade['pair']}
@@ -245,52 +201,29 @@ SHORT
 
 Entry: {trade['entry']}
 SL: {trade['sl']}"""
-                        )
-
-                        completed.append({
-
-                            **trade,
-
-                            "result": "SL",
-
-                            "rr": -1,
-
-                            "closed_at": str(
-                                datetime.now(
-                                    UTC
-                                )
-                            )
-
-                        })
-
-                        closed = True
-
-                if not closed:
-
-                    active_trades.append(
-                        trade
                     )
 
-            except Exception as e:
+                    completed.append({
+                        **trade,
+                        "result": "SL",
+                        "rr": -1,
+                        "closed_at": str(
+                            datetime.now(UTC)
+                        )
+                    })
 
-                print(
-                    f"Trade Error: {e}"
-                )
+                    closed = True
 
-                active_trades.append(
-                    trade
-                )
+            if not closed:
+                active_trades.append(trade)
 
-        save_trades(
-            active_trades
-        )
+        except Exception as e:
 
-        save_completed_trades(
-            completed
-        )
+            print(
+                f"Trade Error: {e}"
+            )
 
-    except Exception as e:
+            active_trades.append(trade)
 
-        print(
-            f"Tracker Error: {e}"
-        )
+    save_trades(active_trades)
+    save_completed_trades(completed)
