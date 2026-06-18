@@ -1,6 +1,9 @@
 import asyncio
 from datetime import datetime, UTC
-
+print("================================")
+print("BLISSFINITY V4 VERIFIED")
+print("COMMIT TEST")
+print("================================")
 from config import (
     SYMBOLS,
     TREND_TIMEFRAME,
