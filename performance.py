@@ -7,45 +7,56 @@ COMPLETED_FILE = "completed_trades.json"
 def get_stats():
 
     if not os.path.exists(COMPLETED_FILE):
-        return "No completed trades yet."
+        return None
 
-    with open(COMPLETED_FILE, "r") as f:
-        trades = json.load(f)
+    try:
 
-    if len(trades) == 0:
-        return "No completed trades yet."
+        with open(COMPLETED_FILE, "r") as f:
+            trades = json.load(f)
 
-    total = len(trades)
+        if not isinstance(trades, list):
+            return None
 
-    wins = len(
-        [t for t in trades if t["rr"] > 0]
-    )
+        if len(trades) == 0:
+            return None
 
-    losses = len(
-        [t for t in trades if t["rr"] < 0]
-    )
+        total = len(trades)
 
-    total_rr = round(
-        sum(t["rr"] for t in trades),
-        2
-    )
+        wins = len(
+            [t for t in trades if t["rr"] > 0]
+        )
 
-    winrate = round(
-        wins / total * 100,
-        2
-    )
+        losses = len(
+            [t for t in trades if t["rr"] < 0]
+        )
 
-    avg_rr = round(
-        total_rr / total,
-        2
-    )
+        total_rr = round(
+            sum(
+                float(t["rr"])
+                for t in trades
+            ),
+            2
+        )
 
-    return (
-        f"📊 BLISSFINITY STATS\n\n"
-        f"Trades: {total}\n"
-        f"Wins: {wins}\n"
-        f"Losses: {losses}\n\n"
-        f"Win Rate: {winrate}%\n"
-        f"Total RR: {total_rr}R\n"
-        f"Average RR: {avg_rr}R"
-    )
+        winrate = round(
+            wins / total * 100,
+            2
+        )
+
+        avg_rr = round(
+            total_rr / total,
+            2
+        )
+
+        return {
+            "total": total,
+            "wins": wins,
+            "losses": losses,
+            "winrate": winrate,
+            "total_rr": total_rr,
+            "avg_rr": avg_rr
+        }
+
+    except:
+
+        return None

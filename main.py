@@ -1,9 +1,6 @@
 import asyncio
 from datetime import datetime, UTC
-print("================================")
-print("BLISSFINITY V4 VERIFIED")
-print("COMMIT TEST")
-print("================================")
+
 from config import (
     SYMBOLS,
     TREND_TIMEFRAME,
@@ -34,38 +31,128 @@ from trade_tracker import check_trades
 
 from telegram_sender import send_message
 
+from weekly_report import (
+    build_weekly_report
+)
+
+import json
+import os
+
+WEEKLY_FILE = "weekly_report_state.json"
+
+
+def load_weekly_state():
+
+    if not os.path.exists(WEEKLY_FILE):
+
+        return {
+            "week": ""
+        }
+
+    try:
+
+        with open(WEEKLY_FILE, "r") as f:
+
+            return json.load(f)
+
+    except:
+
+        return {
+            "week": ""
+        }
+
+
+def save_weekly_state(data):
+
+    with open(WEEKLY_FILE, "w") as f:
+
+        json.dump(
+            data,
+            f,
+            indent=4
+        )
+
 
 async def main():
 
     print("V4 BOT STARTED")
 
     try:
+
         await send_message(
             "✅ Blissfinity V4 Online"
         )
+
     except:
+
         pass
 
     while True:
 
         try:
 
+            now = datetime.now(UTC)
+
+            today = now.strftime(
+                "%Y-%m-%d"
+            )
+
             trades = load_trades()
 
             history = load_signals()
 
-            today = datetime.now(UTC).strftime("%Y-%m-%d")
             if history.get("date") != today:
 
                 history = {
+
                     "date": today,
+
                     "count": 0
+
                 }
 
             signals_today = history.get(
                 "count",
                 0
             )
+
+            # WEEKLY REPORT
+            weekly_state = load_weekly_state()
+
+            current_week = now.strftime(
+                "%Y-W%U"
+            )
+
+            if (
+
+                now.weekday() == 6
+
+                and now.hour == 20
+
+                and weekly_state.get("week")
+                != current_week
+
+            ):
+
+                report = build_weekly_report()
+
+                await send_message(
+                    report
+                )
+
+                weekly_state["week"] = (
+                    current_week
+                )
+
+                save_weekly_state(
+                    weekly_state
+                )
+
+                print(
+                    "Weekly report sent"
+                )
+
+            # SIGNAL SCANNER
 
             for symbol in SYMBOLS:
 
@@ -77,16 +164,20 @@ async def main():
 
                     break
 
-                trend_df, entry_df = get_market_data(
-                    symbol,
-                    TREND_TIMEFRAME,
-                    ENTRY_TIMEFRAME
+                trend_df, entry_df = (
+                    get_market_data(
+                        symbol,
+                        TREND_TIMEFRAME,
+                        ENTRY_TIMEFRAME
+                    )
                 )
 
                 if trend_df is None:
+
                     continue
 
                 if entry_df is None:
+
                     continue
 
                 active_trade = any(
@@ -99,38 +190,54 @@ async def main():
 
                 if active_trade:
 
-                    print(
-                        f"{symbol} active"
-                    )
-
                     continue
 
                 direction = None
 
                 if (
-                    bullish_structure(trend_df)
+
+                    bullish_structure(
+                        trend_df
+                    )
+
                     and
-                    bullish_setup(entry_df)
+
+                    bullish_setup(
+                        entry_df
+                    )
+
                 ):
 
                     direction = "LONG"
 
                 elif (
-                    bearish_structure(trend_df)
+
+                    bearish_structure(
+                        trend_df
+                    )
+
                     and
-                    bearish_setup(entry_df)
+
+                    bearish_setup(
+                        entry_df
+                    )
+
                 ):
 
                     direction = "SHORT"
 
                 if direction is None:
+
                     continue
 
                 entry = round(
+
                     float(
                         entry_df["close"].iloc[-1]
                     ),
+
                     4
+
                 )
 
                 if direction == "LONG":
@@ -203,7 +310,9 @@ SL: {sl}
 
                 signals_today += 1
 
-                history["count"] = signals_today
+                history["count"] = (
+                    signals_today
+                )
 
                 save_signals(
                     history
