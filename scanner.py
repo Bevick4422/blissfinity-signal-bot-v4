@@ -25,7 +25,7 @@ VALID_INTERVALS = {
 def get_klines(
     symbol,
     timeframe,
-    limit=100
+    limit=200
 ):
 
     try:
@@ -33,7 +33,7 @@ def get_klines(
         if timeframe not in VALID_INTERVALS:
 
             print(
-                f"{symbol} invalid timeframe"
+                f"{symbol} invalid timeframe: {timeframe}"
             )
 
             return None
@@ -51,43 +51,49 @@ def get_klines(
         if response.status_code != 200:
 
             print(
-                f"{symbol} HTTP {response.status_code}"
+                f"{symbol} HTTP Error {response.status_code}"
             )
 
             return None
 
         data = response.json()
 
-        if data.get("success") is False:
-
-            print(
-                f"{symbol} API error"
-            )
-
-            return None
-
         candles = data.get("data")
 
         if not candles:
 
             print(
-                f"{symbol} empty candles"
+                f"{symbol} no candle data"
             )
 
             return None
+
+        volume_data = (
+            candles.get("vol")
+            or candles.get("amount")
+            or [0] * len(candles["close"])
+        )
 
         df = pd.DataFrame({
 
             "open": candles["open"],
             "high": candles["high"],
             "low": candles["low"],
-            "close": candles["close"]
+            "close": candles["close"],
+            "volume": volume_data
 
         })
 
-        df = df.astype(float)
+        for col in df.columns:
 
-        if len(df) < 20:
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            )
+
+        df = df.dropna()
+
+        if len(df) < 50:
 
             print(
                 f"{symbol} insufficient candles"
